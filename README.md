@@ -6,7 +6,7 @@
 * [Setup](#setup)
 * [Running the code](#running-the-code)
 ## Overview 
-This project uses Python to code motherboards for Mu2e 
+This project uses Python to code motherboards for the Mu2e project 
 ## General info 
 The motherboards used all have 4 FPGA chips, each with their own 16 DAC channels. The boards register is written in hexadecimal and the Python code mainly focuses on the bias voltages/buses displayed between 0x300 and 0x3FF. 
 ## Technologies 
