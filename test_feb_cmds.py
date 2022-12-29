@@ -2,7 +2,9 @@
 import pytest
 import sockexpect
 import re
+import time 
 from warnings import warn
+biaslist = [br'Bias_0',br'Bias_1',br'Bias_2',br'Bias_3',br'Bias_4',br'Bias_5',br'Bias_6',br'Bias_7']
 
 @pytest.fixture(scope="session")
 def feb_connection():
@@ -178,7 +180,6 @@ def test_ADC(feb_connection): # pylint: disable=redefined-outer-name
         assert abs(error)<10
         print(" **** This is the expected voltage", expvolt,"," " This is the actual voltage", volt, 
         "," "This is the error", error, "% !!!!")
-    """biaslist = [br'Bias_0',br'Bias_1',br'Bias_2',br'Bias_3',br'Bias_4',br'Bias_5',br'Bias_6',br'Bias_7']"""
     error=False
     for i in range(len(biaslist)):
         s.expect(biaslist[i])
