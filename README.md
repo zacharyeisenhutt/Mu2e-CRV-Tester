@@ -78,3 +78,6 @@ For tests that use the FPGA chips or DAC channels make sure you use the desired 
 ***IF A TEST REQUIRES AN FPGA ARGUMENT, BEFORE THE TEST ALWAYS ZERO THE FPGA CHIP(S). THIS IS DONE BY INPUTING `tst.zero_all_bias(s,FPGA#)`, YOU WILL KNOW IF YOU DID THIS CORRECTLY BY A 4 SECOND RUN TIME THAT HAS NO OUTPUT***
 
 For any final questions or insights into the board, click the link below to see the boards register  
+
+[CRV_FEB_Regs.docx](https://github.com/zacharyeisenhutt/Mu2e-CRV-Tester/files/10322233/CRV_FEB_Regs.4.docx)
+
