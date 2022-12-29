@@ -24,5 +24,57 @@ If you would like to check your work at this point, in the command line type `di
 Now all you have to do is type `cd Mu2e-CRV-Tester` into the command line and press enter.
 You should sucessfully be in the folder Mu2e CRV Tester that contains all of the code for this project. 
 ## Running the code 
+When you are in the current directory Mu2e CRV Tester on Command Prompt type `py` and press enter to open python. Make sure that python is version 3.0 or higher, *your version will be displayed once you hit enter.*
 
+***The code will not work depending on what version of python you are running it on, check that your version is compatible.***
 
+In the command line type `from run_code import s, feb, tst` this will pull the sockexpect, feb connection, and test variables, from the run_code.py file.
+These variables will be used as arguments needed for the tests.
+Once you have imported those variables you will need to put tst. infront of what you are trying to run.
+
+***exp.*** 
+
+If we want to test the ADC we can look and see it has an feb_connection argument so I would,
+
+Input `tst.test_ADC(feb)` in the comand line. 
+
+Output  
+ `**** This is the expected voltage 1.2 , This is the actual voltage 1.2 ,This is the error 0.0 % !!!!
+ 
+ **** This is the expected voltage 1.8 , This is the actual voltage 1.8 ,This is the error 0.0 % !!!!
+ 
+ **** This is the expected voltage 5.0 , This is the actual voltage 5.0 ,This is the error 0.0 % !!!!
+ 
+ **** This is the expected voltage 10 , This is the actual voltage 9.82 ,This is the error 1.7999999999999972 % !!!!
+ 
+ **** This is the expected voltage 2.5 , This is the actual voltage 2.5 ,This is the error 0.0 % !!!!
+ 
+ **** This is the expected voltage 5.0 , This is the actual voltage 4.99 ,This is the error 0.19999999999999576 % !!!!
+ 
+ **** This is the expected voltage 15 , This is the actual voltage 15.02 ,This is the error -0.1333333333333305 % !!!!
+ 
+ **** This is the expected voltage 3.3 , This is the actual voltage 3.35 ,This is the error -1.5151515151515234 % !!!!
+ 
+ **** Tbe bias volatge is 0.11  !!!!
+ 
+ **** Tbe bias volatge is 0.11  !!!!
+ 
+ **** Tbe bias volatge is 0.17  !!!!
+ 
+ **** Tbe bias volatge is 0.53  !!!!
+ 
+ **** Tbe bias volatge is 0.11  !!!!
+ 
+ **** Tbe bias volatge is 0.42  !!!!
+ 
+ **** Tbe bias volatge is 0.63  !!!!
+ 
+ **** Tbe bias volatge is 0.11  !!!!
+ 
+ **** The temperature is 24.44 degC !!!!`
+
+For tests that use the FPGA chips or DAC channels make sure you use the desired FPGA and DAC numbers in the arguments.
+
+***IF A TEST REQUIRES AN FPGA ARGUMENT, BEFORE THE TEST ALWAYS ZERO THE FPGA CHIP(S). THIS IS DONE BY INPUTING `tst.zero_all_bias(s,FPGA#)`, YOU WILL KNOW IF YOU DID THIS CORRECTLY BY A 4 SECOND RUN TIME THAT HAS NO OUTPUT***
+
+For any final questions or insights into the board, click the link below to see the boards register  
