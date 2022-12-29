@@ -15,5 +15,6 @@ This Project was created with:
 * Command Prompt 
 * Python version: 3.9.13
 ## Setup 
-To run this project use 
-`git clone`
+To run this project open command prompt and navigate to the desired file you would like to put the code in,
+exp. C:\Users\user\folder-name. Once sucessfully done copy and past this code into the command line.
+`git clone https://github.com/zacharyeisenhutt/Mu2e-CRV-Tester.git`
