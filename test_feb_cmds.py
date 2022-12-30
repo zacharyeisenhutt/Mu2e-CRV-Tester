@@ -5,6 +5,16 @@ import re
 import time 
 from warnings import warn
 biaslist = [br'Bias_0',br'Bias_1',br'Bias_2',br'Bias_3',br'Bias_4',br'Bias_5',br'Bias_6',br'Bias_7']
+N_SIPM = 64
+N_HISTO_BINS = 512
+HISTO_CONTROL = 0x10
+HISTO_COUNT_INTERVAL = 0x11 
+HISTO_POINTER_AFE0 = 0x14 
+HISTO_POINTER_AFE1 = 0x15 
+HISTO_PORT_AFE0 = 0x16 
+HISTO_PORT_AFE1 = 0x17 
+HISTO_CONTROL_ALL = 0x311 
+CSR = 0x00 
 
 @pytest.fixture(scope="session")
 def feb_connection():
@@ -317,5 +327,50 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     s.expect(b"Temp_C.*\r\n")   
     return volt, error
 
-
+def takeEightHistos(intTime_ms, afeInputIdx):                                                                                                                         
+    for fpga in range(0,3):
+        s.send("WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
+        s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
+        s.send("WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
+        for afe in range(0,1):
+            s.send("WR %x %x\n" % (0x80+sipm+8*afe+0x400*fpga, 0xFE0))
+    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60))
+    #Will the system know what sipm is or do I need to go in and define it locally within the variable 
+    #How can I locally define afeInputIdx to be an input index of integars from 0..7
+    #Does this variable need an s component in the argument  
+def readOneHisto(fpga, afe):
+    s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga)
+    time.sleep(.01)
+    s.clear()
+    s.send(f"rdm {HISTO_PORT_AFE0 + afe + 0x400*fpga} 400\n")
+    time.sleep(.01)
+    histo=[int(len(N_HISTO_BINS))]
+    for i in range(0,511) inclusive:
+        s.send("RD %x %x\n" % (i, upperWord))
+        s.send("RD %x %x\n" % (i+1, lowerWord))
+        histo[i] = (upperWord << 16) | lowerWord
+    return histo
+    #s.clear() needs another component to clear feb input buffer of any input
+    #for i in range(0,511) inclusive. Does inclusive imply range from (0,512)? 
+    # How do I read one hexidecimal number and send it to upperword 
+    #How do I read the next hexidecimal number and send it to the lowerword.
     
+def takeAndReadAll64(intTime_ms):
+    all_histos = [N_SIPM,N_HISTO_BINS]
+    histos=np.zeros((N_SIPM,N_HISTO_BINS))
+    for afeInputIdx in range(0,7):
+        takeEightHistos(intTime_ms, afeInputIdx)
+        time.sleep(intTime_ms + .001)
+        for afe in range(0,1):
+            sipm16 = afeInputIdx + 8*afe
+            for fpga in range(0,3):
+                ch = 16*fpga + sipm16
+                histo=ReadOneHisto(fpga, afe)
+                all_histos[ch, :]=histo
+    return all_histos
+    #Did I make the arrays correctly?
+    #Need to define afeInputIdx locally somehow
+    #Does takeEightHistos need and s component in its argument
+    #Where do we define afe and is it local?
+    #Where do we define fpga? 
+        

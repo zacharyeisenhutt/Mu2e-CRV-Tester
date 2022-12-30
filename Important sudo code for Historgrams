@@ -1,0 +1,35 @@
+N_SIPM = 64
+N_HISTO_BINS = 512
+HISTO_CONTROL = 0x10 #Global Constant
+#bits 0-2: AFE input select 
+#bit 3: empty 
+#bit 4: 1=gate, 0=free-run
+#bit 5: AFE 0 start
+#bit 6: AFE 1 start 
+#bit 7: empty 
+HISTO_COUNT_INTERVAL = 0x11   #Global Constant 
+HISTO_POINTER_AFE0 = 0x14 #Global Constant
+HISTO_POINTER_AFE1 = 0x15 #Global Constant
+HISTO_PORT_AFE0 = 0x16 #Global Constant
+HISTO_PORT_AFE1 = 0x17 #Global Constant
+HISTO_CONTROL_ALL = 0x311 #Global Constant
+CSR = 0x00 #Global Constant 
+#bit 0: "Power down AFE 0" 0: Run. 1: Power down.
+#bit 1: "Power down AFE 1" 0: Run. 1: Power down.
+#bit 2: "Issue reset to the AFE deserializer logic in the FPGA"
+#bit 3: "Issue a MIG DDR interface reset"
+#bit 4: "Reset readout sequencer" 1: Reset. 0: No Action
+#bit 5: "Reset AFE FIFOs, Trigger counter, Spill counter and Readout sequencer"
+#bit 6: "Reset the serial controller in the AFE chips"
+#bit 7: "Clear FM receive parity error"
+
+def takeEightHistos(s, intTime_ms, afeInputIdx):
+    for fpga in range(0,3):
+        s.send("WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
+        s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
+        s.send("WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
+        for len(afeInputIdx) in range (0,1):
+            s.send("WR %x %x\n" % (0x80+sipm+8*afe+0x400*fpga, 0xFE0))
+    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60)))
+
+        
