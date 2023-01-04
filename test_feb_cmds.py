@@ -50,28 +50,6 @@ def test_ID(feb_connection): # pylint: disable=redefined-outer-name
     assert match != None, "Failed 0 uB ECC ReBoots test"
     match = re.search( br'FPGA ECC Errors: 0\r\n', s.before)
     assert match != None, "Failed 0 FPGA ECC Errors test"
-    
-
-def test_ADC(feb_connection): # pylint: disable=redefined-outer-name
-    s = sockexpect.SockExpect(feb_connection)
-    s.send(b'ADC\r\n')
-    s.expect(br'1.2v_Pos *')
-    print("Before: " + repr(s.before))
-    print("Match: " + repr(s.match))
-    print("data: " + repr(s.data))
-    s.expect(br'-*[0-9.]+')
-    print("Before: " + repr(s.before))
-    print("Match: " + repr(s.match))
-    v = float(s.match.group(0))
-    # TODO: compare v to expected values 1.2
-    # TODO: repeat above for 1.8v_Pos, etc.....
-    print(" *** The voltage is """, v, " !!!!")
-    print("data: " + repr(s.data))
-    s.expect(br'Temp_C.*\n')
-    print("Before: " + repr(s.before))
-    print("Match: " + repr(s.match))
-    print("data: " + repr(s.data))
-    s.data.clear()
 
 def test_SD(feb_connection):
     s = sockexpect.SockExpect(feb_connection)
@@ -162,21 +140,21 @@ def test_STAT(feb_connection):
         s.expect(br'-*[0-9.]+')
         regsvalue=(s.match.group(0))
         w=FPGAregswrite[i]
-        print(" ****", w, f," !!!!")
+        print(" ****", w, regsvalue," !!!!")
         assert regsvalue==FPGAregsvalue[i]
     for i in range(len(uC_intvalue)):
         s.expect(uC_intlist[i])
         s.expect(br'-*[0-9.]+')
         intvalue=(s.match.group(0))
         w=uC_intwrite[i]
-        print(" ****", w, f," !!!!")
+        print(" ****", w, intvalue," !!!!")
         assert intvalue==uC_intvalue[i]
     for i in range(len(uC_floatvalue)):
         s.expect(uC_floatlist[i])
         s.expect(br'-*[0-9.]+')
         floatvalue=float(s.match.group(0))
         w=uC_floatwrite[i]  
-        print(" ****", w, f," !!!!")
+        print(" ****", w, floatvalue," !!!!")
         assert abs(floatvalue-uC_floatvalue[i])<.5  
 
 
@@ -264,7 +242,6 @@ def check_one_bias_read_write(s,fpga, dac):
         plt.text(1,17, 'y= '+'{:.2f}'.format(b)+'+{:.2f}'.format(a)+'x', size =14)
         plt.show()
         header=['Written Dac Setting','Voltage Observed','Written Dac setting', 'Written FPGA value','Slope for line of fit','Y-intercept for line of fit']
-        data=[dacval,voltread, dac, fpga, a, b]
         with open(f'Data/Check_one_bias_{dac}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
             writer=csv.writer(f)
             writer.writerow(header)
@@ -330,52 +307,42 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     s.expect(b"Temp_C.*\r\n")   
     return volt, error
 
-def takeEightHistos(intTime_ms, afeInputIdx):  
-    afe=64+32+afeInputIdx
-    for fpga in range(0,3):
+def takeEightHistos(s, intTime_ms, afeInputIdx): 
+    """afeInputIdx goes from 0..7""" 
+    for fpga in range(0,4):
         s.send("WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
         s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
         s.send("WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
-        for afe in range(0,1):
-            s.send("WR %x %x\n" % (0x80+sipm+8*afe+0x400*fpga, 0xFE0))
-    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60))
-    #Will the system know what sipm is or do I need to go in and define it locally within the variable. 
-    """How can I locally define afeInputIdx to be an input index of integars from 0..7. I believe I justs did this correctly"""
-    #Does this variable need an s component in the argument  
+        for afe in range(0,2):
+            s.send("WR %x %x\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
+    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
 
-def readOneHisto(fpga, afe):
-    s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga)
+def readOneHisto(s, fpga, afe):
+    s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga))
     time.sleep(.01)
     s.clear()
     s.send(f"rdm {HISTO_PORT_AFE0 + afe + 0x400*fpga} 400\n")
     time.sleep(.01)
-    histo=[int(len(N_HISTO_BINS))]
+    histo=[0]*N_HISTO_BINS
     for i in range(0,512):
-        s.send("RD %x %x\n" % (i, upperWord))
-        s.send("RD %x %x\n" % (i+1, lowerWord))
-        histo[i] = (upperWord << 16) | lowerWord)
+        s.send("RD %x\n" % (2*i))
+        s.expect(b"[A-Z0-9]+")
+        upperWord=int(s.match.group(0),16)
+        s.send("RD %x\n" % (2*i+1))
+        s.expect(b"[A-Z0-9]+")
+        lowerWord=int(s.match.group(0),16)
+        histo[i] = (upperWord << 16) | lowerWord
     return histo
-    #Does s.clear() needs another component to clear feb input buffer of any input
-    #for i in range(0,511) inclusive. Does inclusive imply range from (0,512) or (0,513)? 
-    #How do I read one hexidecimal number and send it to upperword 
-    #How do I read the next hexidecimal number and send it to the lowerword.
     
-def takeAndReadAll64(intTime_ms):
-    all_histos = [N_SIPM,N_HISTO_BINS]
-    histos=np.zeros((N_SIPM,N_HISTO_BINS))
-    for afeInputIdx in range(0,7):
+def takeAndReadAll64(s, intTime_ms):
+    all_histos=np.zeros((N_SIPM,N_HISTO_BINS))
+    for afeInputIdx in range(0,8):
         takeEightHistos(intTime_ms, afeInputIdx)
         time.sleep(intTime_ms + .001)
-        for afe in range(0,1):
+        for afe in range(0,2):
             sipm16 = afeInputIdx + 8*afe
-            for fpga in range(0,3):
+            for fpga in range(0,4):
                 ch = 16*fpga + sipm16
-                histo=ReadOneHisto(fpga, afe)
+                histo=readOneHisto(fpga, afe)
                 all_histos[ch, :]=histo
     return all_histos
-    #Did I make the arrays correctly?
-    #Need to define afeInputIdx locally somehow
-    #Does takeEightHistos need and s component in its argument
-    #Where do we define afe and is it local?
-    #Where do we define fpga? 
-        
