@@ -1,4 +1,4 @@
-N_SIPM = 64
+"""N_SIPM = 64
 N_HISTO_BINS = 512
 HISTO_CONTROL = 0x10 #Global Constant
 #bits 0-2: AFE input select 
@@ -30,6 +30,5 @@ def takeEightHistos(s, intTime_ms, afeInputIdx):
         s.send("WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
         for len(afeInputIdx) in range (0,1):
             s.send("WR %x %x\n" % (0x80+sipm+8*afe+0x400*fpga, 0xFE0))
-    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60)))
-
-        
+    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60)))"""
+    

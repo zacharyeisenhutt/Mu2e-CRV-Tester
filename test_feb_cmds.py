@@ -1,4 +1,7 @@
 """Tests for CRV FEB that can be done with just a bare board."""
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
 import pytest
 import sockexpect
 import re
@@ -15,6 +18,7 @@ HISTO_PORT_AFE0 = 0x16
 HISTO_PORT_AFE1 = 0x17 
 HISTO_CONTROL_ALL = 0x311 
 CSR = 0x00 
+WANT_DEBUG_MESSAGES=False
 
 @pytest.fixture(scope="session")
 def feb_connection():
@@ -259,14 +263,13 @@ def check_one_bias_read_write(s,fpga, dac):
         plt.plot(x, a*x+b)
         plt.text(1,17, 'y= '+'{:.2f}'.format(b)+'+{:.2f}'.format(a)+'x', size =14)
         plt.show()
-        header=['Written Dac Setting','Voltage Observed','Written Dac setting', 'Written FPGA value','slope and y-intercept for line of fit']
-        data=[dacval,voltread, dac, fpga,(a,b)]
-        print(data, "This be the printed data")
+        header=['Written Dac Setting','Voltage Observed','Written Dac setting', 'Written FPGA value','Slope for line of fit','Y-intercept for line of fit']
+        data=[dacval,voltread, dac, fpga, a, b]
         with open(f'Data/Check_one_bias_{dac}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
             writer=csv.writer(f)
             writer.writerow(header)
             for i in range(len(dacval)):
-                writer.writerow([dacval[i], voltread[i], dac, fpga,(a,b)])
+                writer.writerow([dacval[i], voltread[i], dac, fpga, a, b])
         
     if dac<16:
         s.send(b"WR %x 800\r\n"%addr)
@@ -327,7 +330,8 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     s.expect(b"Temp_C.*\r\n")   
     return volt, error
 
-def takeEightHistos(intTime_ms, afeInputIdx):                                                                                                                         
+def takeEightHistos(intTime_ms, afeInputIdx):  
+    afe=64+32+afeInputIdx
     for fpga in range(0,3):
         s.send("WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
         s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
@@ -335,9 +339,10 @@ def takeEightHistos(intTime_ms, afeInputIdx):
         for afe in range(0,1):
             s.send("WR %x %x\n" % (0x80+sipm+8*afe+0x400*fpga, 0xFE0))
     s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (sipm|0x60))
-    #Will the system know what sipm is or do I need to go in and define it locally within the variable 
-    #How can I locally define afeInputIdx to be an input index of integars from 0..7
+    #Will the system know what sipm is or do I need to go in and define it locally within the variable. 
+    """How can I locally define afeInputIdx to be an input index of integars from 0..7. I believe I justs did this correctly"""
     #Does this variable need an s component in the argument  
+
 def readOneHisto(fpga, afe):
     s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga)
     time.sleep(.01)
@@ -345,14 +350,14 @@ def readOneHisto(fpga, afe):
     s.send(f"rdm {HISTO_PORT_AFE0 + afe + 0x400*fpga} 400\n")
     time.sleep(.01)
     histo=[int(len(N_HISTO_BINS))]
-    for i in range(0,511) inclusive:
+    for i in range(0,512):
         s.send("RD %x %x\n" % (i, upperWord))
         s.send("RD %x %x\n" % (i+1, lowerWord))
-        histo[i] = (upperWord << 16) | lowerWord
+        histo[i] = (upperWord << 16) | lowerWord)
     return histo
-    #s.clear() needs another component to clear feb input buffer of any input
-    #for i in range(0,511) inclusive. Does inclusive imply range from (0,512)? 
-    # How do I read one hexidecimal number and send it to upperword 
+    #Does s.clear() needs another component to clear feb input buffer of any input
+    #for i in range(0,511) inclusive. Does inclusive imply range from (0,512) or (0,513)? 
+    #How do I read one hexidecimal number and send it to upperword 
     #How do I read the next hexidecimal number and send it to the lowerword.
     
 def takeAndReadAll64(intTime_ms):
