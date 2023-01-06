@@ -307,28 +307,29 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     s.expect(b"Temp_C.*\r\n")   
     return volt, error
 
-def takeEightHistos(s, intTime_ms, afeInputIdx): 
+def takeEightHistos(s, intTime_ms, afeInputIdx):
+    """intTime is in miliseconds""" 
     """afeInputIdx goes from 0..7""" 
     for fpga in range(0,4):
-        s.send("WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
-        s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
-        s.send("WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
+        s.send(b"WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
+        s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
+        s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
         for afe in range(0,2):
-            s.send("WR %x %x\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
-    s.send("WR %x %x\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
+            s.send(b"WR %x %x\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
+    s.send(b"WR %x %x\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
 
 def readOneHisto(s, fpga, afe):
-    s.send("WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga))
+    s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga, 0))
     time.sleep(.01)
     s.clear()
     s.send(f"rdm {HISTO_PORT_AFE0 + afe + 0x400*fpga} 400\n")
     time.sleep(.01)
     histo=[0]*N_HISTO_BINS
     for i in range(0,512):
-        s.send("RD %x\n" % (2*i))
+        s.send(b"RD %x\n" % (2*i))
         s.expect(b"[A-Z0-9]+")
         upperWord=int(s.match.group(0),16)
-        s.send("RD %x\n" % (2*i+1))
+        s.send(b"RD %x\n" % (2*i+1))
         s.expect(b"[A-Z0-9]+")
         lowerWord=int(s.match.group(0),16)
         histo[i] = (upperWord << 16) | lowerWord
