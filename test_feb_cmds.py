@@ -308,7 +308,7 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     return volt, error
 
 def takeEightHistos(s, intTime_ms, afeInputIdx):
-    """intTime is in miliseconds""" 
+    """intTime is integration time in miliseconds""" 
     """afeInputIdx goes from 0..7""" 
     for fpga in range(0,4):
         s.send(b"WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
