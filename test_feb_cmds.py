@@ -311,39 +311,70 @@ def takeEightHistos(s, intTime_ms, afeInputIdx):
     """intTime is integration time in miliseconds""" 
     """afeInputIdx goes from 0..7""" 
     for fpga in range(0,4):
-        s.send(b"WR %x %x\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
-        s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
-        s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
+        s.send(b"WR %x %x\r\n" % (HISTO_COUNT_INTERVAL + 0x400*fpga, intTime_ms))
+        s.send(b"WR %x %x\r\n" % (HISTO_POINTER_AFE0 + 0x400*fpga, 0))
+        s.send(b"WR %x %x\r\n" % (HISTO_POINTER_AFE1 + 0x400*fpga, 0))
         for afe in range(0,2):
-            s.send(b"WR %x %x\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
-    s.send(b"WR %x %x\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
+            s.send(b"WR %x %x\r\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
+    s.send(b"WR %x %x\r\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
 
 def readOneHisto(s, fpga, afe):
-    s.send(b"WR %x %x\n" % (HISTO_POINTER_AFE0 + afe + 0x400*fpga, 0))
+    print("readOneHisto: fpga=", fpga, " afe=", afe)
+    s.send(b'WR %x %x\r\n' % (HISTO_POINTER_AFE0 + afe + 0x400*fpga, 0))
     time.sleep(.01)
-    s.clear()
-    s.send(f"rdm {HISTO_PORT_AFE0 + afe + 0x400*fpga} 400\n")
+    s.before.clear()
+    s.data.clear()
+    s.send(b'RDM %x %x\r\n' % (HISTO_PORT_AFE0 + afe + 0x400*fpga, 2*N_HISTO_BINS) ) 
     time.sleep(.01)
     histo=[0]*N_HISTO_BINS
     for i in range(0,512):
-        s.send(b"RD %x\n" % (2*i))
-        s.expect(b"[A-Z0-9]+")
+        """print("readOneHisto: i=", i, "s.data=", s.data)"""
+        s.expect(b'[A-Fa-f0-9]+')
         upperWord=int(s.match.group(0),16)
-        s.send(b"RD %x\n" % (2*i+1))
-        s.expect(b"[A-Z0-9]+")
+        s.expect(b'[A-Fa-f0-9]+')
         lowerWord=int(s.match.group(0),16)
         histo[i] = (upperWord << 16) | lowerWord
     return histo
     
-def takeAndReadAll64(s, intTime_ms):
+def takeAndReadAll64(s, intTime_ms, afeInputIdx):
     all_histos=np.zeros((N_SIPM,N_HISTO_BINS))
     for afeInputIdx in range(0,8):
-        takeEightHistos(intTime_ms, afeInputIdx)
+        takeEightHistos(s, intTime_ms, afeInputIdx)
         time.sleep(intTime_ms + .001)
         for afe in range(0,2):
             sipm16 = afeInputIdx + 8*afe
             for fpga in range(0,4):
                 ch = 16*fpga + sipm16
-                histo=readOneHisto(fpga, afe)
+                histo=readOneHisto(s, fpga, afe)
                 all_histos[ch, :]=histo
     return all_histos
+
+def plot_histo(s):
+    counts=[]
+    bin_num_list=[]
+    for i in range(0,63):
+        takeAndReadAll64(s, intTime_ms, afeInputIdx)
+        count_num=ch
+        bin_num=N_HISTO_BINS
+        counts.append(count_num)
+        bin_num_list.append(bin_num)
+    for counts[i] in range(0,63):
+        x=np.array(bin_num_list[i])  
+        y=np.array(counts[i])
+        a,b =np.polyfit(x[0:5],y[0:5],1)
+        plt.xlabel('Bin #')
+        plt.ylabel('# of Counts')
+        plt.title('# of Counts vs. Bin #')
+        plt.scatter(x,y)
+        plt.plot(x, a*x+b)
+        plt.text(1,17, 'y= '+'{:.2f}'.format(b)+'+{:.2f}'.format(a)+'x', size =14)
+        plt.show()
+        header=['Bin #','# of Counts','Written AFE value', 'Written FPGA value','Slope for line of fit','Y-intercept for line of fit']
+        with open(f'Data/plot_histo{afe}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
+            writer=csv.writer(f)
+            writer.writerow(header)
+            for i in range(len(bin_num_list)):
+                writer.writerow([bin_num_list[i], counts[i], afe, fpga, a, b])
+    
+    
+    
