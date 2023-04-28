@@ -6,6 +6,9 @@ import pytest
 import sockexpect
 import re
 import time 
+import plotly.graph_objects as go
+import pandas as pd
+from scipy.signal import find_peaks
 from warnings import warn
 biaslist = [br'Bias_0',br'Bias_1',br'Bias_2',br'Bias_3',br'Bias_4',br'Bias_5',br'Bias_6',br'Bias_7']
 N_SIPM = 64
@@ -336,11 +339,11 @@ def readOneHisto(s, fpga, afe):
         histo[i] = (upperWord << 16) | lowerWord
     return histo
     
-def takeAndReadAll64(s, intTime_ms, afeInputIdx):
+def takeAndReadAll64(s, intTime_ms):
     all_histos=np.zeros((N_SIPM,N_HISTO_BINS))
     for afeInputIdx in range(0,8):
         takeEightHistos(s, intTime_ms, afeInputIdx)
-        time.sleep(intTime_ms + .001)
+        time.sleep(intTime_ms*.001+.001)
         for afe in range(0,2):
             sipm16 = afeInputIdx + 8*afe
             for fpga in range(0,4):
@@ -349,32 +352,48 @@ def takeAndReadAll64(s, intTime_ms, afeInputIdx):
                 all_histos[ch, :]=histo
     return all_histos
 
-def plot_histo(s):
-    counts=[]
-    bin_num_list=[]
-    for i in range(0,63):
-        takeAndReadAll64(s, intTime_ms, afeInputIdx)
-        count_num=ch
-        bin_num=N_HISTO_BINS
-        counts.append(count_num)
-        bin_num_list.append(bin_num)
-    for counts[i] in range(0,63):
-        x=np.array(bin_num_list[i])  
-        y=np.array(counts[i])
-        a,b =np.polyfit(x[0:5],y[0:5],1)
-        plt.xlabel('Bin #')
-        plt.ylabel('# of Counts')
-        plt.title('# of Counts vs. Bin #')
-        plt.scatter(x,y)
-        plt.plot(x, a*x+b)
-        plt.text(1,17, 'y= '+'{:.2f}'.format(b)+'+{:.2f}'.format(a)+'x', size =14)
-        plt.show()
-        header=['Bin #','# of Counts','Written AFE value', 'Written FPGA value','Slope for line of fit','Y-intercept for line of fit']
-        with open(f'Data/plot_histo{afe}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
+def plot_histo(all_histos):
+    #Code error specifices that all_histos is not defined, should I make it a global variable.
+    intTime_ms=10
+    #all_histos = takeAndReadAll64(s, intTime_ms)
+    x=np.arange(0,N_HISTO_BINS)
+    """csv_catcher=[]"""
+    figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
+    axes = axes.flatten()
+    for ich in range(0,N_SIPM):
+        y=np.array(all_histos[ich, :])
+        a,b =np.polyfit(x, y, 1)
+        if ich == 59:
+            axes[ich].set_xlabel('Bin #')
+        if ich == 24:
+            axes[ich].set_ylabel('# of Counts')
+        if ich == 3:
+            axes[ich].set_title('# of Counts vs. Bin #')
+        axes[ich].scatter(x,y)
+        ymax = max(y)
+        axes[ich].text(N_HISTO_BINS//2, ymax-1, "max %d" % ymax, va="top", ha="center")
+        header=['Bset_in #','# of Counts']
+        with open(f'Data/plot_histo{ich}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
             writer=csv.writer(f)
             writer.writerow(header)
-            for i in range(len(bin_num_list)):
-                writer.writerow([bin_num_list[i], counts[i], afe, fpga, a, b])
-    
-    
+            for i in range(len(x)):
+                writer.writerow([x[i], y[i]])
+            """csv_catcher.append(f)"""
+    plt.show()
+
+def analyse_histo(s):
+    intTime_ms=10
+    all_histos = takeAndReadAll64(s, intTime_ms)
+    plot_histo(all_histos) 
+    """Wondering if I need a for loop that takes csv file f from plot_histo and runs it through an index of 0-63, 
+    which will plot each individual peak finding""" 
+    #Thus far, the code cannot find what f is which was defined in plot_histo as the csv file. 
+    #Trying to get csv_catcher list in plot_histo have its indices ran through a for loop with my peak finding function
+    count_data = pd.read_csv(f)
+    time_series = count_data['# Counts vs Bin #']
+    indices = find_peaks(time_series)[0]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(y=time_series, mode='lines+markers', name='Original Plot'))
+    fig.add_trace(go.Scatter(x=indices, y=[time_series[j] for j in indices], mode='markers', marker=dict(size=8,color='red',symbol='cross'),name='Detected Peaks'))
+    fig.show()
     
