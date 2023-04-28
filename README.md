@@ -6,7 +6,7 @@
 * [Setup](#setup)
 * [Running the code](#running-the-code)
 ## Overview 
-This project uses Python to code FEB(Front End Boards) for the Mu2e project  
+This project uses Python to code FEB(Front End Boards) for the Mu2e project. 
 ## General info 
 The FEB utilizes 4 FPGA chips where each chip contains 16 DAC channels, 2 AFE chips, and 16 SIPMs. The FEB register is written in hexadecimal and the Python code mainly focuses on the bias voltages/buses displayed between 0x300 and 0x3FF as well as histogram functions that utilize the AFE chips and SIPMs in the FPGA chips. 
 ## Technologies 
