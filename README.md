@@ -55,21 +55,21 @@ Output
  
  **** This is the expected voltage 3.3 , This is the actual voltage 3.35 ,This is the error -1.5151515151515234 % !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.17  !!!!
+ **** The bias volatge is 0.17  !!!!
  
- **** Tbe bias volatge is 0.53  !!!!
+ **** The bias volatge is 0.53  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.42  !!!!
+ **** The bias volatge is 0.42  !!!!
  
- **** Tbe bias volatge is 0.63  !!!!
+ **** The bias volatge is 0.63  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
  **** The temperature is 24.44 degC !!!!`
 
