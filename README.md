@@ -6,7 +6,7 @@
 * [Setup](#setup)
 * [Running the code](#running-the-code)
 ## Overview 
-This project uses Python to code FEB(Front End Boards) for the Mu2e project  
+This project uses Python to code FEB(Front End Boards) for the Mu2e project. 
 ## General info 
 The FEB utilizes 4 FPGA chips where each chip contains 16 DAC channels, 2 AFE chips, and 16 SIPMs. The FEB register is written in hexadecimal and the Python code mainly focuses on the bias voltages/buses displayed between 0x300 and 0x3FF as well as histogram functions that utilize the AFE chips and SIPMs in the FPGA chips. 
 ## Technologies 
@@ -55,21 +55,21 @@ Output
  
  **** This is the expected voltage 3.3 , This is the actual voltage 3.35 ,This is the error -1.5151515151515234 % !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.17  !!!!
+ **** The bias volatge is 0.17  !!!!
  
- **** Tbe bias volatge is 0.53  !!!!
+ **** The bias volatge is 0.53  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
- **** Tbe bias volatge is 0.42  !!!!
+ **** The bias volatge is 0.42  !!!!
  
- **** Tbe bias volatge is 0.63  !!!!
+ **** The bias volatge is 0.63  !!!!
  
- **** Tbe bias volatge is 0.11  !!!!
+ **** The bias volatge is 0.11  !!!!
  
  **** The temperature is 24.44 degC !!!!`
 
