@@ -6,8 +6,6 @@ import pytest
 import sockexpect
 import re
 import time 
-import plotly.graph_objects as go
-import pandas as pd
 from scipy.signal import find_peaks
 from warnings import warn
 biaslist = [br'Bias_0',br'Bias_1',br'Bias_2',br'Bias_3',br'Bias_4',br'Bias_5',br'Bias_6',br'Bias_7']
@@ -340,6 +338,9 @@ def readOneHisto(s, fpga, afe):
     return histo
     
 def takeAndReadAll64(s, intTime_ms):
+    """Acquires (takes) histogram data from all 64 channels,
+    returns array of 64 x N_HISTO_BINS.
+    """
     all_histos=np.zeros((N_SIPM,N_HISTO_BINS))
     for afeInputIdx in range(0,8):
         takeEightHistos(s, intTime_ms, afeInputIdx)
@@ -352,17 +353,16 @@ def takeAndReadAll64(s, intTime_ms):
                 all_histos[ch, :]=histo
     return all_histos
 
-def plot_histo(all_histos):
-    #Code error specifices that all_histos is not defined, should I make it a global variable.
-    intTime_ms=10
-    #all_histos = takeAndReadAll64(s, intTime_ms)
+
+def plot_histos(all_histos):
+    """Plots the N_SIPM (=64) histograms from the data given.
+    Data passed should be N_SIPM x N_HISTO_BINS array.
+    """
     x=np.arange(0,N_HISTO_BINS)
-    """csv_catcher=[]"""
     figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
     axes = axes.flatten()
     for ich in range(0,N_SIPM):
         y=np.array(all_histos[ich, :])
-        a,b =np.polyfit(x, y, 1)
         if ich == 59:
             axes[ich].set_xlabel('Bin #')
         if ich == 24:
@@ -372,28 +372,84 @@ def plot_histo(all_histos):
         axes[ich].scatter(x,y)
         ymax = max(y)
         axes[ich].text(N_HISTO_BINS//2, ymax-1, "max %d" % ymax, va="top", ha="center")
-        header=['Bset_in #','# of Counts']
-        with open(f'Data/plot_histo{ich}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
+    plt.show()
+
+
+def save_histos(all_histos, suffix):
+    """Save the 64 histograms from the data given.
+    Data passed in first argument should be 64 x N_HISTO_BINS array.
+    Data is saved in files named Data/plot_histo{ich}_{suffix}.csv,
+    where ich is the histogram number and suffix is the second argument.
+    """
+    x=np.arange(0,N_HISTO_BINS)
+    for ich in range(0,N_SIPM):
+        y=np.array(all_histos[ich, :])
+        # a,b =np.polyfit(x, y, 1)
+        header=['Bin #','# of Counts']
+        with open(f'Data/plot_histo{ich}_{suffix}.csv', 'w', encoding='UTF8', newline='') as f:
             writer=csv.writer(f)
             writer.writerow(header)
             for i in range(len(x)):
                 writer.writerow([x[i], y[i]])
-            """csv_catcher.append(f)"""
-    plt.show()
 
-def analyse_histo(s):
-    intTime_ms=10
-    all_histos = takeAndReadAll64(s, intTime_ms)
-    plot_histo(all_histos) 
-    """Wondering if I need a for loop that takes csv file f from plot_histo and runs it through an index of 0-63, 
-    which will plot each individual peak finding""" 
-    #Thus far, the code cannot find what f is which was defined in plot_histo as the csv file. 
-    #Trying to get csv_catcher list in plot_histo have its indices ran through a for loop with my peak finding function
-    count_data = pd.read_csv(f)
-    time_series = count_data['# Counts vs Bin #']
-    indices = find_peaks(time_series)[0]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(y=time_series, mode='lines+markers', name='Original Plot'))
-    fig.add_trace(go.Scatter(x=indices, y=[time_series[j] for j in indices], mode='markers', marker=dict(size=8,color='red',symbol='cross'),name='Detected Peaks'))
-    fig.show()
+
+def take_plot_and_save_all_histos(s):
+    timestring = time.strftime("%Y-%m-%d_%H-%M-%S")
+    fred = takeAndReadAll64(s, 10)
+    plot_histos(fred)
+    save_histos(fred, timestring)
+
+
+def read_all_histos_from_file(suffix):
+    """Read saved histos from csv files (saved by save_histos) 
+    and returns them as 64 x N_HISTO_BINS array
+    """
+    all_histos=np.zeros((N_SIPM,N_HISTO_BINS))
+    for ich in range(0,N_SIPM):
+        with open(f'Data/plot_histo{ich}_{suffix}.csv', 'r', encoding='UTF8', newline='') as f:
+            reader = csv.reader(f)
+            header = next(reader)
+            assert header[1] == '# of Counts'
+            for i in range(N_HISTO_BINS):
+                row = next(reader)
+                all_histos[ich, i] = row[1]
+    return all_histos
+
+
+def analyse_all_histos(all_histos):
+    """Data passed should be N_SIPM x N_HISTO_BINS array.
+    """
+    #Prominence is the minimum height necessary to descend to get from the summit to any higher terrain
     
+    for i in range(N_SIPM):
+        time_series = all_histos[i, :]
+        y=np.array(time_series)
+        peaks, _ = find_peaks(y, distance=20)
+        peaks2, _ = find_peaks(y, prominence=1)
+        plt.subplot(2, 2, 1)
+        plt.plot(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])
+        plt.subplot(2, 2, 2)
+        plt.plot(peaks2, y[peaks2], "ob"); plt.plot(y); plt.legend(['prominence'])
+        print( [(i,j) for i, j in zip(peaks, y[peaks] )] )
+        print( [(i,j) for i, j in zip(peaks2, y[peaks2] )] )
+        plt.show()
+    
+    #Code below is my attempt to get all 64 graphs on one page and it graphed just not correctly.    
+    """x=np.arange(0,N_HISTO_BINS)
+    figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
+    axes = axes.flatten()
+    for i in range(N_SIPM):
+        time_series = all_histos[i, :]
+        y=np.array(time_series)
+        peaks, _ = find_peaks(y, distance=20)
+        plt.plot(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])
+        if i == 59:
+            axes[i].set_xlabel('Bin #')
+        if i == 24:
+            axes[i].set_ylabel('# of Counts')
+        if i == 3:
+            axes[i].set_title('# of Counts vs. Bin #')
+        axes[i].scatter(x,y)
+        peakmax=max(peaks)
+        axes[i].text(N_HISTO_BINS//2, peakmax-1, "peaks %d" % peakmax, va="top", ha="center")
+    plt.show()"""

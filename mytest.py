@@ -45,6 +45,61 @@ if 69>=addr>=48:
 			fpga=3
 			print("**** Your FPGA and DAC are", fpga,",", dac," !!!!")	
 
-	
-	
+csv_catcher=[]	
+def plot_histo(all_histos):
+    #Code error specifices that all_histos is not defined, should I make it a global variable.
+    intTime_ms=10
+    #all_histos = takeAndReadAll64(s, intTime_ms)
+    x=np.arange(0,N_HISTO_BINS)
+    figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
+    axes = axes.flatten()
+    for ich in range(0,N_SIPM):
+        y=np.array(all_histos[ich, :])
+        a,b =np.polyfit(x, y, 1)
+        if ich == 59:
+            axes[ich].set_xlabel('Bin #')
+        if ich == 24:
+            axes[ich].set_ylabel('# of Counts')
+        if ich == 3:
+            axes[ich].set_title('# of Counts vs. Bin #')
+        axes[ich].scatter(x,y)
+        ymax = max(y)
+        axes[ich].text(N_HISTO_BINS//2, ymax-1, "max %d" % ymax, va="top", ha="center")
+        header=['Bset_in #','# of Counts']
+        with open(f'Data/plot_histo{ich}_{time.strftime("%Y-%m-%d_%H-%M-%S")}.csv', 'w', encoding='UTF8', newline='') as f:
+            writer=csv.writer(f)
+            writer.writerow(header)
+            for i in range(len(x)):
+                writer.writerow([x[i], y[i]])
+            csv_catcher.append(f)
+    plt.show()
+
+def analyse_histo(s):
+    intTime_ms=10
+    all_histos = takeAndReadAll64(s, intTime_ms)
+    plot_histo(all_histos) 
+    for i in range(len(csv_catcher)):
+        count_data = pd.read_csv(i)
+        time_series = count_data['# Counts vs Bin #']
+        indices = find_peaks(time_series)[0]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=time_series, mode='lines+markers', name='Original Plot'))
+        fig.add_trace(go.Scatter(x=indices, y=[time_series[j] for j in indices], mode='markers', marker=dict(size=8,color='red',symbol='cross'),name='Detected Peaks'))
+        fig.show()
+        
+def analyse_histo_tst2(s):
+    intTime_ms=10
+    all_histos = takeAndReadAll64(s, intTime_ms)
+    plot_histo(all_histos) 
+    csv = {}
+        for i in range(1, 145):
+            for j in range(1, 11):
+                s = 'HMM_{}_{}'.format(i,j) 
+                csv[s] = pd.read_csv(s+'.csv')
+                time_series = csv[s](['# Counts vs Bin #'])
+                indices = find_peaks(time_series)[0]
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(y=time_series, mode='lines+markers', name='Original Plot'))
+                fig.add_trace(go.Scatter(x=indices, y=[time_series[j] for j in indices], mode='markers', marker=dict(size=8,color='red',symbol='cross'),name='Detected Peaks'))
+                fig.show()
 
