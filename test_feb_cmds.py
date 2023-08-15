@@ -21,6 +21,7 @@ HISTO_CONTROL_ALL = 0x311
 CSR = 0x00 
 WANT_DEBUG_MESSAGES=False
 
+
 @pytest.fixture(scope="session")
 def feb_connection():
     """Make a test fixture for pytest to reuse the same feb_connnection
@@ -29,6 +30,7 @@ def feb_connection():
     sock = make_feb_socket()
     yield sock
     sock.close()
+
 
 def make_feb_socket():
     """Make connection to the FEB.
@@ -41,6 +43,7 @@ def make_feb_socket():
     sock.settimeout(3.0)
     return sock
 
+
 def test_ID(feb_connection): # pylint: disable=redefined-outer-name
     s = sockexpect.SockExpect(feb_connection)
     s.send(b'ID\r\n')
@@ -51,6 +54,7 @@ def test_ID(feb_connection): # pylint: disable=redefined-outer-name
     assert match != None, "Failed 0 uB ECC ReBoots test"
     match = re.search( br'FPGA ECC Errors: 0\r\n', s.before)
     assert match != None, "Failed 0 FPGA ECC Errors test"
+
 
 def test_SD(feb_connection):
     s = sockexpect.SockExpect(feb_connection)
@@ -67,6 +71,7 @@ def test_SD(feb_connection):
             nfailures += 1
     assert nfailures == 0
     
+    
 def test_fs(feb_connection):
     s= sockexpect.SockExpect(feb_connection)
     s.send(b'FS\r\n')
@@ -81,6 +86,7 @@ def test_fs(feb_connection):
         w=writelist[i]
         print(" ****", w, FSval," !!!!")
         assert FSval==FSvaluelist[i]
+
 
 def test_set(feb_connection):
     s=sockexpect.SockExpect(feb_connection)
@@ -195,6 +201,7 @@ def test_all_bias(feb_connection):
         for dac in range(22):
             check_one_bias_read_write(s,fpga,dac)
     
+    
 def check_one_bias_read_write(s,fpga, dac):
     """ dac number is 0-21 inclusive """
     assert 22>dac>=0
@@ -308,6 +315,7 @@ def check_one_bias_ADC(s, fpga, dac, wdac, ptol=0.04):
     s.expect(b"Temp_C.*\r\n")   
     return volt, error
 
+
 def takeEightHistos(s, intTime_ms, afeInputIdx):
     """intTime is integration time in miliseconds""" 
     """afeInputIdx goes from 0..7""" 
@@ -318,6 +326,7 @@ def takeEightHistos(s, intTime_ms, afeInputIdx):
         for afe in range(0,2):
             s.send(b"WR %x %x\r\n" % (0x80+afeInputIdx+8*afe+0x400*fpga, 0xFE0))
     s.send(b"WR %x %x\r\n" % (HISTO_CONTROL_ALL, (afeInputIdx|0x60)))
+
 
 def readOneHisto(s, fpga, afe):
     print("readOneHisto: fpga=", fpga, " afe=", afe)
@@ -337,7 +346,8 @@ def readOneHisto(s, fpga, afe):
         histo[i] = (upperWord << 16) | lowerWord
     return histo
     
-def takeAndReadAll64(s, intTime_ms):
+    
+def take_and_read_all_64(s, intTime_ms):
     """Acquires (takes) histogram data from all 64 channels,
     returns array of 64 x N_HISTO_BINS.
     """
@@ -352,27 +362,6 @@ def takeAndReadAll64(s, intTime_ms):
                 histo=readOneHisto(s, fpga, afe)
                 all_histos[ch, :]=histo
     return all_histos
-
-
-def plot_histos(all_histos):
-    """Plots the N_SIPM (=64) histograms from the data given.
-    Data passed should be N_SIPM x N_HISTO_BINS array.
-    """
-    x=np.arange(0,N_HISTO_BINS)
-    figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
-    axes = axes.flatten()
-    for ich in range(0,N_SIPM):
-        y=np.array(all_histos[ich, :])
-        if ich == 59:
-            axes[ich].set_xlabel('Bin #')
-        if ich == 24:
-            axes[ich].set_ylabel('# of Counts')
-        if ich == 3:
-            axes[ich].set_title('# of Counts vs. Bin #')
-        axes[ich].scatter(x,y)
-        ymax = max(y)
-        axes[ich].text(N_HISTO_BINS//2, ymax-1, "max %d" % ymax, va="top", ha="center")
-    plt.show()
 
 
 def save_histos(all_histos, suffix):
@@ -393,13 +382,11 @@ def save_histos(all_histos, suffix):
                 writer.writerow([x[i], y[i]])
 
 
-def take_plot_and_save_all_histos(suffix):
+def take_and_save_histo_data(s, suffix):
     """Plots and saves all histos under a specific suffix.
     suffix='word'"""
     timestring = time.strftime(suffix)
-    suffix = takeAndReadAll64(s, 10)
-    plot_histos(suffix)
-    save_histos(suffix, timestring)
+    save_histos(take_and_read_all_64(s,10), timestring)
 
 
 def read_all_histos_from_file(suffix):
@@ -417,6 +404,7 @@ def read_all_histos_from_file(suffix):
                 all_histos[ich, i] = row[1]
     return all_histos
 
+
 def graph_one_histo(all_histos, ich):
     """Plots single graph of one channel in range NSIPM"""
     
@@ -428,7 +416,7 @@ def graph_one_histo(all_histos, ich):
     plt.show()
     
 
-def analyse_one_histo(all_histos, ich):
+def analyze_one_histo(all_histos, ich):
     """Data passed should be N_SIPM x N_HISTO_BINS array
     Reads individual SIPM channels from file suffix in second argument
     records N_histo_bin and peak values"""
@@ -444,20 +432,18 @@ def analyse_one_histo(all_histos, ich):
     print( [(i,j) for i, j in zip(peaks2, y[peaks2] )] )
     plt.show()"""
     
+    
 def graph_all_histos(all_histos):
-    """Graphs all histograms from NSIPM channels to one figure"""
-    #For some reason Sipm channel 6 isn't showing any peaks the graph looks like
-    #a straight line the result of this is an error in the code because peaks becomes an empty sequence.
-    #Commented out code gives a broken peak tracker that can be fixed later if needed 
-     
+    """Plots the N_SIPM (=64) histograms from the data given.
+    Data passed should be N_SIPM x N_HISTO_BINS array.
+    """
+    #Commented out code is for peak count text
+    
     x=np.arange(0,N_HISTO_BINS)
     figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
     axes = axes.flatten()
     for ich in range(0,N_SIPM):
-        time_series = all_histos[ich, :]
-        y=np.array(time_series)
-        peaks, _ = find_peaks(y, distance=20)
-        """plt.subplots(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])"""
+        y=np.array(all_histos[ich, :])
         if ich == 59:
             axes[ich].set_xlabel('Bin #')
         if ich == 24:
@@ -465,11 +451,12 @@ def graph_all_histos(all_histos):
         if ich == 3:
             axes[ich].set_title('# of Counts vs. Bin #')
         axes[ich].scatter(x,y)
-        peakmax=max(peaks)
-        axes[ich].text(N_HISTO_BINS//2, peaks-1, "peaks %d" % y[peaks], va="top", ha="center")
+        ymax = max(y)
+        """axes[ich].text(N_HISTO_BINS//2, ymax-1, "max %d" % ymax, va="top", ha="center")"""
     plt.show()
     
-def analyse_all_histos(all_histos):
+    
+def analyze_all_histos(all_histos):
     """Data from all NSIPM channels is taken from suffix files 
     then prints out (N_Histos_Bins, peak #).
     """
