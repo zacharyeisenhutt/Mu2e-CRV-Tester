@@ -393,11 +393,13 @@ def save_histos(all_histos, suffix):
                 writer.writerow([x[i], y[i]])
 
 
-def take_plot_and_save_all_histos(s):
-    timestring = time.strftime("%Y-%m-%d_%H-%M-%S")
-    fred = takeAndReadAll64(s, 10)
-    plot_histos(fred)
-    save_histos(fred, timestring)
+def take_plot_and_save_all_histos(suffix):
+    """Plots and saves all histos under a specific suffix.
+    suffix='word'"""
+    timestring = time.strftime(suffix)
+    suffix = takeAndReadAll64(s, 10)
+    plot_histos(suffix)
+    save_histos(suffix, timestring)
 
 
 def read_all_histos_from_file(suffix):
@@ -415,41 +417,76 @@ def read_all_histos_from_file(suffix):
                 all_histos[ich, i] = row[1]
     return all_histos
 
+def graph_one_histo(all_histos, ich):
+    """Plots single graph of one channel in range NSIPM"""
+    
+    time_series = all_histos[ich, :]
+    y=np.array(time_series)
+    peaks, _ = find_peaks(y, distance=20)
+    plt.subplot(1, 1, 1)
+    plt.plot(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])
+    plt.show()
+    
 
-def analyse_all_histos(all_histos):
-    """Data passed should be N_SIPM x N_HISTO_BINS array.
-    """
-    #Prominence is the minimum height necessary to descend to get from the summit to any higher terrain
+def analyse_one_histo(all_histos, ich):
+    """Data passed should be N_SIPM x N_HISTO_BINS array
+    Reads individual SIPM channels from file suffix in second argument
+    records N_histo_bin and peak values"""
+    #Commented out prominence code
     
-    for i in range(N_SIPM):
-        time_series = all_histos[i, :]
-        y=np.array(time_series)
-        peaks, _ = find_peaks(y, distance=20)
-        peaks2, _ = find_peaks(y, prominence=1)
-        plt.subplot(2, 2, 1)
-        plt.plot(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])
-        plt.subplot(2, 2, 2)
-        plt.plot(peaks2, y[peaks2], "ob"); plt.plot(y); plt.legend(['prominence'])
-        print( [(i,j) for i, j in zip(peaks, y[peaks] )] )
-        print( [(i,j) for i, j in zip(peaks2, y[peaks2] )] )
-        plt.show()
+    time_series = all_histos[ich, :]
+    y=np.array(time_series)
+    peaks, _ = find_peaks(y, distance=20)
+    print( [(i,j) for i, j in zip(peaks, y[peaks] )] )
+    """peaks2, _ = find_peaks(y, prominence=1)
+    plt.subplot(2, 2, 2)
+    plt.plot(peaks2, y[peaks2], "ob"); plt.plot(y); plt.legend(['prominence'])
+    print( [(i,j) for i, j in zip(peaks2, y[peaks2] )] )
+    plt.show()"""
     
-    #Code below is my attempt to get all 64 graphs on one page and it graphed just not correctly.    
-    """x=np.arange(0,N_HISTO_BINS)
+def graph_all_histos(all_histos):
+    """Graphs all histograms from NSIPM channels to one figure"""
+    #For some reason Sipm channel 6 isn't showing any peaks the graph looks like
+    #a straight line the result of this is an error in the code because peaks becomes an empty sequence.
+    #Commented out code gives a broken peak tracker that can be fixed later if needed 
+     
+    x=np.arange(0,N_HISTO_BINS)
     figure, axes = plt.subplots(8, 8, sharex=True, sharey=True)
     axes = axes.flatten()
-    for i in range(N_SIPM):
-        time_series = all_histos[i, :]
+    for ich in range(0,N_SIPM):
+        time_series = all_histos[ich, :]
         y=np.array(time_series)
         peaks, _ = find_peaks(y, distance=20)
-        plt.plot(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])
-        if i == 59:
-            axes[i].set_xlabel('Bin #')
-        if i == 24:
-            axes[i].set_ylabel('# of Counts')
-        if i == 3:
-            axes[i].set_title('# of Counts vs. Bin #')
-        axes[i].scatter(x,y)
+        """plt.subplots(peaks, y[peaks], "xr"); plt.plot(y); plt.legend(['peak'])"""
+        if ich == 59:
+            axes[ich].set_xlabel('Bin #')
+        if ich == 24:
+            axes[ich].set_ylabel('# of Counts')
+        if ich == 3:
+            axes[ich].set_title('# of Counts vs. Bin #')
+        axes[ich].scatter(x,y)
         peakmax=max(peaks)
-        axes[i].text(N_HISTO_BINS//2, peakmax-1, "peaks %d" % peakmax, va="top", ha="center")
-    plt.show()"""
+        axes[ich].text(N_HISTO_BINS//2, peaks-1, "peaks %d" % y[peaks], va="top", ha="center")
+    plt.show()
+    
+def analyse_all_histos(all_histos):
+    """Data from all NSIPM channels is taken from suffix files 
+    then prints out (N_Histos_Bins, peak #).
+    """
+    BINS=[]
+    COUNTS=[]
+    x=np.arange(0,N_HISTO_BINS)
+    for ich in range(0,N_SIPM):
+        time_series = all_histos[ich, :]
+        y=np.array(time_series)
+        peaks, _ = find_peaks(y, distance=20)
+        print( [(i,j) for i, j in zip(peaks, y[peaks] )] )
+        BINS.append(peaks)
+        COUNTS.append(y[peaks])
+    for ich in range(0,N_SIPM):
+        header=['Channel', 'Histo Bin #','# of Counts at peak']
+        with open(f'HistoAnalysis/Histo_Analysis_{time.strftime("%Y-%m-%d_%H-%M")}.csv', 'w', encoding='UTF8', newline='') as f:
+            writer=csv.writer(f)
+            writer.writerow(header)
+            for i in range(0, N_SIPM):
+                writer.writerow([i, BINS[i], COUNTS[i]])
