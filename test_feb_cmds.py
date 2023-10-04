@@ -1,6 +1,7 @@
 """Tests for CRV FEB that can be done with just a bare board."""
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 import csv
 import pytest
 import sockexpect
@@ -477,3 +478,72 @@ def analyze_all_histos(all_histos):
             writer.writerow(header)
             for i in range(0, N_SIPM):
                 writer.writerow([i, BINS[i], COUNTS[i]])
+
+
+def read_graph_data_from_file(filepath):
+    x = []
+    y = []
+  
+    with open(filepath,'r') as csvfile:
+        lines = csv.reader(csvfile, delimiter=',')
+        for row in lines:
+            x.append(row[0])
+            y.append(int(row[1]))
+    plt.scatter(x, y, color = 'g', marker = 'o',label = "Particled detected")
+    plt.xticks(rotation = 25)
+    plt.xlabel('Bin #')
+    plt.ylabel('# of Counts')
+    plt.title('Particle data', fontsize = 20)
+    plt.grid()
+    plt.legend()
+    plt.show()
+
+def gaussian_fit(all_histos, ich):
+    """Plots and fits a guassian to a single graph in one channel within range NSIPM"""
+    
+    y_data = all_histos[ich, :]
+    x_data = np.arange(0,N_HISTO_BINS)
+    #y=np.array(time_series)
+    plt.subplot(1, 1, 1)
+    def check_bad_fit(error, threshold, sig_guess):
+        bad_fit = False
+        for err in error:
+            if (np.abs(err)>threshold):
+                print(f'Error {sig_guess} did not create a good fit')
+                return True
+        return False
+  
+    #x_data = time_series
+    #y_data = gaussian(x_data, 0, 1)
+    # make initial guess
+    def gaussian(x, mean, sig, A):
+        return (A / (sig * np.sqrt(2 * np.pi))) * np.exp(-((x - mean) ** 2) / (2 * sig** 2))
+    threshold = 2
+    sigma_guess = 2
+    sigma_guess1 = 1000
+    peaks, _ = find_peaks(y_data, distance=20)
+    if peaks < 10000:
+        p0 = [peaks[0], sigma_guess, np.sqrt(2 * np.pi * sigma_guess)]
+        p1 = [peaks[0], sigma_guess1, np.sqrt(2 * np.pi * sigma_guess1)]
+        popti, pcovi = curve_fit(gaussian, x_data, y_data, p0)
+        errori=np.sqrt(np.diag(pcovi))
+        poptf, pcovf = curve_fit(gaussian, x_data, y_data, p1)
+        errorf=np.sqrt(np.diag(pcovf))
+        mean_fit, sig_fit, A = popti
+        mean_fitf, sig_fitf, A = poptf
+        x=np.linspace(0, N_HISTO_BINS, 10000)
+        y_fit = gaussian(x, mean_fit, sig_fit, A)
+        y_fitf = gaussian(x, mean_fitf, sig_fitf, A)
+        plt.scatter(x_data, y_data, label='Particle Data')
+        if(not check_bad_fit(errori, threshold, sigma_guess)):
+            plt.plot(x, y_fit, 'r', label='Initial Fit')
+        if(not check_bad_fit(errorf, threshold, sigma_guess1)):
+            plt.plot(x, y_fitf, 'r', color='green', label='Final Fit')
+        plt.xlabel('Bin #')
+        plt.ylabel('# of counts')
+        print(mean_fit, sig_fit, A, pcovi)
+        print(mean_fit, sig_fit, A, pcovf)
+        plt.legend()
+        plt.show()
+        return mean_fit, sig_fit, A, pcovi
+        return mean_fit, sig_fit, A, pcovf
