@@ -519,12 +519,14 @@ def gaussian_fit(all_histos, ich):
     def gaussian(x, mean, sig, A):
         return (A / (sig * np.sqrt(2 * np.pi))) * np.exp(-((x - mean) ** 2) / (2 * sig** 2))
     threshold = 2
-    sigma_guess = 2
+    sigma_guess = 1
     sigma_guess1 = 1000
     peaks, _ = find_peaks(y_data, distance=20)
+    j=peaks[0]
+    h = y_data[j]
     if peaks < 10000:
-        p0 = [peaks[0], sigma_guess, np.sqrt(2 * np.pi * sigma_guess)]
-        p1 = [peaks[0], sigma_guess1, np.sqrt(2 * np.pi * sigma_guess1)]
+        p0 = [np.sqrt(2*np.pi)*sigma_guess*h, sigma_guess, np.sqrt(2 * np.pi) * sigma_guess]
+        p1 = [peaks[0], sigma_guess1, np.sqrt(2 * np.pi) * sigma_guess1]
         popti, pcovi = curve_fit(gaussian, x_data, y_data, p0)
         errori=np.sqrt(np.diag(pcovi))
         poptf, pcovf = curve_fit(gaussian, x_data, y_data, p1)
